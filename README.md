@@ -6,7 +6,7 @@
 - [Arquitectura Hexagonal](#arquitectura-hexagonal)
   - [Domain](#domain)
   - [Application](#application)
-  - [Presentation](#presentation)
+  - [UI](#ui)
   - [Infrastructure](#infrastructure)
   - [Reglas de dependencia](#reglas-de-dependencia)
 - [Navegación](#navegación)
@@ -43,14 +43,18 @@ ar.edu.unlam.mobile.scaffolding/
 │
 ├── application/                # Orquestación y definición de puertos
 │   ├── port/
-│   │   ├── in/                 # Puertos de entrada: interfaces que llama Presentation
+│   │   ├── in/                 # Puertos de entrada: interfaces que llama UI
 │   │   └── out/                # Puertos de salida: interfaces que implementa Infrastructure
 │   └── service/                # Interactors: implementan port/in, usan port/out
 │
-├── presentation/               # Adaptador de entrada — Jetpack Compose, ViewModels
-│   └── <feature>/
-│       ├── <Feature>Screen.kt
-│       └── <Feature>ViewModel.kt
+├── ui/                         # Adaptador de entrada — Jetpack Compose, ViewModels
+│   ├── screens/
+│   │   └── <feature>/
+│   │       ├── <Feature>Screen.kt
+│   │       └── <Feature>ViewModel.kt
+│   ├── components/             # Composables reutilizables sin estado propio
+│   ├── navigation/             # Definición de rutas y NavHost
+│   └── theme/                  # Material Design 3 (Color, Type, Theme)
 │
 └── infrastructure/             # Adaptador de salida — Room, Retrofit, sensores, cámara
     ├── db/                     # Room: implementa application.port.out
@@ -86,7 +90,7 @@ class AngleComparisonService @Inject constructor() {
 Capa de orquestación. Define **qué** puede hacer el sistema (puertos) y **cómo** se coordina
 (interactors). No tiene dependencias de Android ni de infrastructure.
 
-**`port/in/`** — Interfaces de casos de uso que la capa de Presentation invoca. Cada interfaz
+**`port/in/`** — Interfaces de casos de uso que la capa de UI invoca. Cada interfaz
 representa una acción del usuario o del sistema:
 
 ```kotlin
@@ -118,13 +122,13 @@ class LoginInteractor @Inject constructor(
 
 ---
 
-### Presentation
+### UI
 
 Adaptador de entrada. Contiene toda la UI de Android (Jetpack Compose, ViewModels, Navigation).
 
 - Los **ViewModels** inyectan interfaces de `application/port/in/` — nunca clases de infrastructure.
 - Las pantallas son composables **sin estado propio**; el estado viene del ViewModel via `StateFlow`.
-- Los componentes reutilizables viven en `presentation/components/`.
+- Los componentes reutilizables viven en `ui/components/`.
 
 #### Paradigma Contenedor / Componente
 
@@ -170,12 +174,12 @@ tecnologías concretas (Room, Retrofit, Firebase, sensores Android).
 
 ### Reglas de dependencia
 
-| Capa             | Puede importar          | NO puede importar                         |
-|------------------|-------------------------|-------------------------------------------|
-| `domain`         | nada (Kotlin puro)      | application, presentation, infrastructure |
-| `application`    | domain únicamente       | presentation, infrastructure              |
-| `presentation`   | application, domain     | infrastructure                            |
-| `infrastructure` | application, domain     | presentation                              |
+| Capa             | Puede importar          | NO puede importar               |
+|------------------|-------------------------|---------------------------------|
+| `domain`         | nada (Kotlin puro)      | application, ui, infrastructure |
+| `application`    | domain únicamente       | ui, infrastructure              |
+| `ui`             | application, domain     | infrastructure                  |
+| `infrastructure` | application, domain     | ui                              |
 
 Estas reglas se deben verificar en code review. Una violación típica es inyectar una clase
 concreta de infrastructure (ej. `SessionPreferences`) directamente en un interactor de application.
@@ -198,3 +202,4 @@ Dagger Hilt en toda la aplicación:
 [1]: https://martinfowler.com/bliki/DomainDrivenDesign.html
 [2]: https://developer.android.com/training/dependency-injection/hilt-android
 [3]: https://alistair.cockburn.us/hexagonal-architecture/
+

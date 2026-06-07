@@ -1,4 +1,4 @@
-# Presentation Layer
+# UI Layer (Inbound Adapter)
 
 **Regla: puede importar `application` y `domain`. No puede importar `infrastructure`.**
 
@@ -9,13 +9,14 @@ el ciclo de vida de Android.
 ## Estructura
 
 ```
-presentation/
-├── <feature>/
-│   ├── <Feature>Screen.kt      # Composable de pantalla (layout)
-│   └── <Feature>ViewModel.kt   # Estado y lógica de UI
-├── components/                 # Composables reutilizables sin estado propio
-├── navigation/                 # Definición de rutas y NavHost
-└── theme/                      # Material Design 3 (Color, Type, Theme)
+ui/
+├── screens/
+│   └── <feature>/
+│       ├── <Feature>Screen.kt      # Composable de pantalla (layout)
+│       └── <Feature>ViewModel.kt   # Estado y lógica de UI
+├── components/                     # Composables reutilizables sin estado propio
+├── navigation/                     # Definición de rutas y NavHost
+└── theme/                          # Material Design 3 (Color, Type, Theme)
 ```
 
 ## ViewModels
@@ -94,7 +95,7 @@ sealed class UiState {
 ## Relación con otras capas
 
 ```
-presentation ──► application/port/in  (ViewModels invocan use cases)
-presentation ──► domain/model         (usa modelos para renderizar UI)
-presentation ✗── infrastructure       (prohibido: no importar clases concretas de infra)
+ui ──► application/port/in  (ViewModels invocan use cases)
+ui ──► domain/model         (usa modelos para renderizar UI)
+ui ✗── infrastructure       (prohibido: no importar clases concretas de infra)
 ```
