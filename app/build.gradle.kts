@@ -53,6 +53,17 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        managedDevices {
+            localDevices {
+                create("pixel6api34") {
+                    device = "Pixel 6"
+                    apiLevel = 34
+                    systemImageSource = "google-atd"
+                }
+            }
+        }
+    }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"

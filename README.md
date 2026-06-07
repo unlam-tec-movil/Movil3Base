@@ -1,249 +1,200 @@
-g# Mobile Scaffolding
+# Mobile Scaffolding
 
-## Index
+## Índice
 
-- [Configuración](#configuration)
+- [Configuración](#configuración)
 - [Arquitectura Hexagonal](#arquitectura-hexagonal)
-- [UI](#ui)
-    - [Composables](#composables)
-    - [SPA](#single-activity-application)
-    - [Packages](#packages-en-ui)
-        - [Screens](#screens)
-        - [Components](#componentes)
-    - [Main Activity](#main-activity)
-        - [Navigation](#navigation)
-- [Data](#data)
-
-Este repositorio se presenta como una referencia para organizar un proyecto de Android. La elección
-de packages está basada en las recomendaciones de android[1].
-
-![image](https://github.com/unlam-tec-movil/ScaffoldingV2/assets/5816687/b8a3641e-8c5f-48e0-a995-7a7b9594dae3)
+  - [Domain](#domain)
+  - [Application](#application)
+  - [Presentation](#presentation)
+  - [Infrastructure](#infrastructure)
+  - [Reglas de dependencia](#reglas-de-dependencia)
+- [Navegación](#navegación)
+- [Inyección de Dependencias](#inyección-de-dependencias)
 
 ## Consideraciones previas
 
-Para este documento usaremos como ejemplo una aplicación de notas. Esta aplicación estará compuesta
-por dos modelos de negocio: Nota y Usuario. Un usuario puede tener muchas notas.
-
-Esto significa que, para cada explicación que daremos usaremos estos dos modelos de negocio como
-ejemplos.
+Para este documento usaremos como ejemplo una aplicación de rehabilitación física. Los modelos de
+negocio centrales son: `Session`, `Exercise`, `User` y `Clinic`.
 
 ## Configuración
 
-El proyecto ejecuta dos workflows de github en cada PR. El primero realiza análisis estático de
-código usando ktlint y gradle. El segundo ejecuta los tests de la aplicación.
+El proyecto ejecuta dos workflows de GitHub en cada PR:
 
-Para configurar el proyecto en Android Studio, se debe de tener instalado el plugin
-de [ktlint](https://plugins.jetbrains.com/plugin/15057-ktlint)
+1. Análisis estático con `ktlint` y `./gradlew lint`.
+2. Tests con cobertura mínima del 60% (Kover).
 
-## UI
+Para configurar el proyecto en Android Studio, instalar el plugin
+de [ktlint](https://plugins.jetbrains.com/plugin/15057-ktlint).
 
-En esta capa se diseña la interacción con el usuario. Aquí se definirán pantallas, componentes
-visuales y el estado de
-la información. Al ser el eslabón más cercano con el usuario, esta capta también es la que más
-componentes "android"
-tendrá. Por ejemplo, aquí estarán los viewmodels, se podrá usar livedata, etc.
+---
 
-## Composables
+## Arquitectura Hexagonal
 
-Actualmente, el elemento troncal para la composición de pantallas en Android son los composables de
-la librería Jetpack
-Compose. Esencialmente son funciones que reciben un estado y devuelven una función. Jetpack
-interpreta a estos
-componentes y renderiza las pantallas correspondientes.
-
-## Single Activity Application
-
-A raíz de la maduración de jetpack compose, hoy en día Android nos permite construir aplicaciones
-usando un solo
-activity. Esto reduce la complejudad y agiliza la navegación entre pantallas. Pero propone un nuevo
-desafío: ¿Cómo
-organizamos nuestros componentes para navegar entre pantallas? Una respuesta es el paradigma
-contenedor / componente.
-
-## Paradigma Contenedor Componente
-
-Este paradigma propone organizar nuestros composables en dos grandes tipo. Uno como contenedor y
-otros como componentes
-reutilizables. Un contenedor agrupa componentes que pueden ser construidos y destruidos juntos. En
-sí no definen
-elementos visuales sino que reutilizar y organizan otros elementos visuales. Un componente por otro
-lado, define
-visualmente cómo se muestra la información deseada. Es decir: recibirá un estado y diseñará cómo se
-muestra este estado.
-
-## Packages en UI
-
-Siguiendo el paradigma contenedor / componente, en UI tendremos dos grandes packages: screens y
-components.
-
-### Screens
-
-Aquí estarán los contenedores de pantallas. Estos componentes orquestarán a los otros componentes y
-definirán qué cosas
-ve el usuario en cada pantalla. Cada Screen estará a compañado de su respectivo viewmodel quien es
-el que se encarga de
-manejar el estado que se muestra en la pantalla.
-
-### Componentes
-
-Aquí estarán los componentes visuales. Estos recibirán un estado desde una pantalla / screen y
-definirán cómo se
-muestra. Estos componentes pueden ser reutilizados en diferentes pantallas.
-
-### View Models
-
-Los view models son los contenedores de estado. Ya veremos en clase cómo tratar con ellos. Lo
-imporante es que para
-acceder a un viewmodel dentro de un composable de tipo Screen utilizamos la herramienta Hilt
-llamando al método
-hiltViewModel() como valor por defecto de dicho viewModel.
-
-```kotlin
-@Composable
-fun HomeScreen(modifier: Modifier = Modifier, viewModel: HomeViewModel = hiltViewModel()) {
-}
+El proyecto implementa la **Arquitectura Hexagonal (Ports & Adapters)** en un único módulo Android.
+El objetivo es aislar la lógica de negocio del framework, haciendo el core testeable sin emulador.
 
 ```
+ar.edu.unlam.mobile.scaffolding/
+│
+├── domain/                     # Núcleo de negocio — sin Android, sin frameworks
+│   ├── model/                  # Modelos de dominio puros (data classes Kotlin)
+│   └── service/                # Servicios de dominio: lógica pura sobre modelos
+│
+├── application/                # Orquestación y definición de puertos
+│   ├── port/
+│   │   ├── in/                 # Puertos de entrada: interfaces que llama Presentation
+│   │   └── out/                # Puertos de salida: interfaces que implementa Infrastructure
+│   └── service/                # Interactors: implementan port/in, usan port/out
+│
+├── presentation/               # Adaptador de entrada — Jetpack Compose, ViewModels
+│   └── <feature>/
+│       ├── <Feature>Screen.kt
+│       └── <Feature>ViewModel.kt
+│
+└── infrastructure/             # Adaptador de salida — Room, Retrofit, sensores, cámara
+    ├── db/                     # Room: implementa application.port.out
+    ├── network/                # Retrofit: implementa application.port.out
+    ├── di/                     # Módulos Hilt
+    └── <adapter>/              # Adaptadores de dispositivo (cámara, sensores, ubicación)
+```
 
-> La organización de packages entre Screens y ViewModels puede variar acorde a la necesidad o el
-> gusto de los desarrolladores: Los ViewModels pueden estar en el mismo package que los screens, o
-> en un package separado.
+---
 
-## Main Activity
+### Domain
 
-Este es el activity principal de nuestra aplicación. Aquí definiremos el theme, la navegación y el
-scaffold principal.
+La capa más interna. Contiene el conocimiento de negocio puro, sin dependencias externas.
 
-### Navigation
+**`model/`** — Modelos de dominio representados como `data class` de Kotlin. No tienen lógica de
+persistencia ni de presentación.
 
-#### Navigation Controller
+**`service/`** — Servicios de dominio: funciones puras que operan sobre los modelos. No tienen
+estado, no hacen I/O, no importan Android ni frameworks.
 
-Para la navegación utilizaremos la herramienta Navigation Controller de Jetpack. Esta herramienta
-nos permite navegar
-entre componentes en nuestra aplicación. Para hacerlo primero definimos un Host que es el lugar en
-el que "traeremos"
-las pantallas de nuestra aplicación. En este caso, lo ubicamos en el "body" del Scaffold. De este
-modo traeremos las
-pantallas dentro del contexto del Scaffold.
+Ejemplo de servicio de dominio:
 
-Dentro del host es que definiremos los "destinos" posibles para la navegación. Para ello insertamos
-dentro del NavHost
-las diferentes pantallas que definimos en el package de Screen. Como estas son composables, llamamos
-a la función
-"composable" dentro del navhost. Esta función recibe por parámetro un identificador "route" que será
-el modo en el que
-podremos acceder al composable a posteriori. También recibe un composable que es el Screen que
-queremos mostrar.
+```kotlin
+class AngleComparisonService @Inject constructor() {
+    fun compare(measured: Float, target: Float): Feedback { ... }
+}
+```
 
-Podemos tamibén recibir argumentos. Estos argumentos se definen en el "route" como un template de
-texto. Luego, podemos
-capturar el valor recibido y pasarseló al composable como parámetro.
+---
 
-Veamos un ejemplo:
+### Application
+
+Capa de orquestación. Define **qué** puede hacer el sistema (puertos) y **cómo** se coordina
+(interactors). No tiene dependencias de Android ni de infrastructure.
+
+**`port/in/`** — Interfaces de casos de uso que la capa de Presentation invoca. Cada interfaz
+representa una acción del usuario o del sistema:
+
+```kotlin
+interface LoginUseCase {
+    suspend operator fun invoke(email: String, password: String): String
+}
+```
+
+**`port/out/`** — Interfaces de repositorios y fuentes de datos que infrastructure implementa:
+
+```kotlin
+interface UserRepository {
+    suspend fun saveUser(user: User)
+    fun getUser(): Flow<User?>
+}
+```
+
+**`service/`** — Interactors: implementan los puertos de entrada, llaman a los puertos de salida y
+orquestan servicios de dominio:
+
+```kotlin
+class LoginInteractor @Inject constructor(
+    private val userRepository: UserRepository,   // port/out
+    private val sessionSource: SessionSource,      // port/out
+) : LoginUseCase {
+    override suspend fun invoke(email: String, password: String): String { ... }
+}
+```
+
+---
+
+### Presentation
+
+Adaptador de entrada. Contiene toda la UI de Android (Jetpack Compose, ViewModels, Navigation).
+
+- Los **ViewModels** inyectan interfaces de `application/port/in/` — nunca clases de infrastructure.
+- Las pantallas son composables **sin estado propio**; el estado viene del ViewModel via `StateFlow`.
+- Los componentes reutilizables viven en `presentation/components/`.
+
+#### Paradigma Contenedor / Componente
+
+Los composables se organizan en dos tipos:
+
+- **Screen (contenedor)**: orquesta componentes, conecta con el ViewModel, maneja navegación.
+- **Component**: recibe estado y lambdas, no conoce el ViewModel ni la navegación.
+
+#### Navegación
+
+Single-activity con `NavHost` en `MainScreen`. Rutas como constantes de string; argumentos como
+segmentos de path:
 
 ```kotlin
 NavHost(navController = controller, startDestination = "home") {
-    // composable es el componente que se usa para definir un destino de navegación.
-    // Por parámetro recibe la ruta que se utilizará para navegar a dicho destino.
-    composable("home") {
-        // Home es el componente en sí que es el destino de navegación.
-        HomeScreen(modifier = Modifier.padding(paddingValue))
-    }
+    composable("home") { HomeScreen() }
     composable(
-        route = "segundo/{id}",
-        arguments = listOf(navArgument("id") { type = NavType.IntType }),
-    ) { navBackStackEntry ->
-        val id = navBackStackEntry.arguments?.getInt("id") ?: 1
-        SecondaryScreen(controller = controller, id = id)
+        route = "rehab/{sessionId}",
+        arguments = listOf(navArgument("sessionId") { type = NavType.StringType }),
+    ) { backStackEntry ->
+        val id = backStackEntry.arguments?.getString("sessionId") ?: ""
+        RehabSessionScreen(sessionId = id)
     }
 }
 ```
 
-En el ejemplo tenemos dos rutas definidas. Una "home" y otra "segundo/{id}". La primera no recibe
-argumentos y es la que
-usamos también por defecto (definido en el parámetro starDestination del NavHost).
+---
 
-La segunda ruta recibe un parámetro de tipo ID. El segundo parámetro de esta función: "arguments"
-define cómo tratamos
-los argumentos recibidos en la ruta. En este caso, definimos que el argumento "id" es de tipo Int.
+### Infrastructure
 
-Finalmente la función que pasamos al composable, recibimos un parámetro de tipo NavBackStackEntry.
-Este objeto nos
-permite acceder al estado de la navegación actual. Hacemos esto para poder leer el argumento ID que
-recibimos, ponerle
-un valor por defecto y luego pasarlo al composable SecondaryScreen.
+Adaptador de salida. Implementa los puertos definidos en `application/port/out/` usando
+tecnologías concretas (Room, Retrofit, Firebase, sensores Android).
 
-Este SecondaryScreen podrá interactuar con el id recibido. Por ejemplo, podría pasarseló a un
-viewmodel para traer
-información de un elemento de ID recibido.
+**`db/`** — Implementaciones Room (DAOs, Entities, Database, Mappers).
 
-#### Navigate
+**`network/`** — Clientes Retrofit (API interfaces, DTOs, Mappers).
 
-Una vez que definimos las rutas de destino, queda ver cómo accedemos a ellas en el resto de la
-aplicación. Para ello
-necesitamos llamar al método controler.navigate("ruta") donde "ruta" es el identificador que
-definimos en el NavHost.
+**`di/`** — Módulos Hilt que ligan interfaces (`port/out`) con sus implementaciones.
 
-Si quisieramos ir hacia la home, habría que llamar a: controller.navigate("home").
+**`<adapter>/`** — Adaptadores de dispositivo: cámara (CameraX), sensores, ubicación.
 
-Si quisieramos ir hacia la página "segundo" y pasarle un id, habría que llamar a:
-controller.navigate("segundo/1")
+---
 
-Si queremos que un composable pueda navegar, deberá de recibir por parámetro un NavHostController.
+### Reglas de dependencia
 
-## Data
+| Capa             | Puede importar          | NO puede importar                         |
+|------------------|-------------------------|-------------------------------------------|
+| `domain`         | nada (Kotlin puro)      | application, presentation, infrastructure |
+| `application`    | domain únicamente       | presentation, infrastructure              |
+| `presentation`   | application, domain     | infrastructure                            |
+| `infrastructure` | application, domain     | presentation                              |
 
-En esta capa se encontrarán las implementaciones para la comunicación con servicios externos a la
-apliocación. Ya sean bases de datos, servicios web, etc.
+Estas reglas se deben verificar en code review. Una violación típica es inyectar una clase
+concreta de infrastructure (ej. `SessionPreferences`) directamente en un interactor de application.
 
-Idealmente, debiera de haber un package por cada dominio de negocio.
+---
 
-Hay dos packages que tendremos de base: DI y Repository. Ya hablaremos de ellos más adelante.
+## Inyección de Dependencias
 
-Hay otros packages que podrán existir de acuerdo a la necesidad. Si necesitamos implementar una
-conexión hacia una API externa, podremos tener un package de nombre "network".
-Si necesitamos implementar acceso a una base de dato local, podremos tener un package de nombre
-"local". En "idioma" Clean
+Dagger Hilt en toda la aplicación:
 
-### Repositories
+- `ScaffoldingApplication` → `@HiltAndroidApp`
+- `MainActivity` → `@AndroidEntryPoint`
+- ViewModels → `@HiltViewModel` + `hiltViewModel()` en el composable
+- Los módulos Hilt (en `infrastructure/di/`) ligan cada interfaz `port/out` con su implementación
 
-Aqui se define para cada modelo de negocio el repositorio y la implementacion por defecto
-correspondiente. Tendremos un package por cada tipo de dato por ejemplo un package "UserRepository"
-para el modelo de negocio de usuario y otro "PostRepository" para el modelo de negocio de post.
+---
 
-#### Implementación default
-
-En este package también tendremos una implementación default del repositorio. Esta implementación
-funcionará como "agregadora" de las diferentes implementaciones / adapters que existan en esta capa.
-Esto nos dará flexibilidad para ir a buscar rcursos de diferente modo.
-
-## Data Sources
-
-Aquí estarán los adapters de los recursos externos. A diferencia de lo que se construye dentro de
-repository que son de cara a un modelo, las clases aquí son de cara a los recursos externos. Es
-decir, tendremos una implementación por cada fuente de información. Puede darse el caso de que sean
-coincidentes los recursos expuestos en el package repository y lo que vayamos a buscar como no.
-Podemos llegar a necesitar ir a buscar a varias fuentes de información lo necesario para exponer un
-recurso.
-
-Dentro de esas implementaciones solemos tener dos:
-
-### Network
-
-Aquí estará la implementación del consumo de apis externas. En este package usaremos Retrofit para
-la gestión de requests hacia la API.
-
-### Local
-
-Aquí estará la implementación del consumo de bases de datos locales. La herramienta para gestionar
-estas bases es Room.
-
-![Power](https://github.com/unlam-tec-movil/ScaffoldingV2/assets/5816687/200d9f10-2a71-409a-90ba-103ddffa9758)
+## Referencias
 
 [1]: https://martinfowler.com/bliki/DomainDrivenDesign.html
-
 [2]: https://developer.android.com/training/dependency-injection/hilt-android
-
-[3]: https://es.wikipedia.org/wiki/Diagrama_entidad-relaci%C3%B3n
-
-[4]: https://martinfowler.com/bliki/AnemicDomainModel.html
+[3]: https://alistair.cockburn.us/hexagonal-architecture/

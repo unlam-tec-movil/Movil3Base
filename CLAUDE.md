@@ -24,20 +24,48 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
-Single-module Android app using **Hexagonal / Clean Architecture** with Jetpack Compose.
+Single-module Android app using **Hexagonal (Ports & Adapters) Architecture** with Jetpack Compose.
 
-### Layers
+```
+ar.edu.unlam.mobile.scaffolding/
+│
+├── domain/                     # Core business logic — NO Android, NO frameworks
+│   ├── model/                  # Pure data models (Kotlin data classes only)
+│   └── service/                # Pure domain services (stateless logic over models)
+│
+├── application/                # Orchestration & port definitions — NO Android, NO frameworks
+│   ├── port/
+│   │   ├── in/                 # Input ports: interfaces that presentation calls (use cases)
+│   │   └── out/                # Output ports: interfaces that infrastructure implements (repositories, remote sources)
+│   └── service/                # Interactors: implement input ports, call output ports
+│
+├── presentation/               # Inbound adapter — Jetpack Compose + Android UI
+│   └── <feature>/
+│       ├── <Feature>Screen.kt  # Composable layout
+│       └── <Feature>ViewModel.kt  # Calls ONLY application.port.in interfaces
+│
+└── infrastructure/             # Outbound adapter — Room, Retrofit, sensors, camera
+    ├── db/                     # Room implementations of application.port.out
+    ├── network/                # Retrofit implementations of application.port.out
+    ├── di/                     # Hilt modules wiring ports to implementations
+    └── <adapter>/              # Device adapters (camera, sensors, location)
+```
 
-**UI Layer** (`ui/`)
-- `screens/` — Screen-level composables paired 1:1 with a ViewModel. Each screen owns its state via `StateFlow` and exposes a sealed `UiState` (Loading / Success / Error).
-- `components/` — Stateless, reusable composables that receive data and lambdas.
-- `theme/` — Material Design 3 theming (Color, Type, Theme).
+### Dependency Rules (strictly enforced)
 
-**Data Layer** (`data/`)
-- `datasources/network/` — Retrofit-based remote sources.
-- `datasources/local/` — Room-based local sources.
-- `repositories/` — Abstractions that combine data sources; consumed by ViewModels.
-- `di/` — Hilt modules wiring datasources and repositories.
+| Layer            | May import              | Must NOT import                         |
+|------------------|-------------------------|-----------------------------------------|
+| `domain`         | nothing (pure Kotlin)   | application, presentation, infrastructure |
+| `application`    | domain only             | presentation, infrastructure            |
+| `presentation`   | application, domain     | infrastructure                          |
+| `infrastructure` | application, domain     | presentation                            |
+
+### Key Concepts
+
+- **Input Port** (`application/port/in/`): interface defining a use case (e.g., `LoginUseCase`). Presentation calls these.
+- **Output Port** (`application/port/out/`): interface defining a data contract (e.g., `UserRepository`, `LocationSource`). Infrastructure implements these.
+- **Interactor** (`application/service/`): implements an input port, orchestrates domain logic and output ports.
+- **Domain Service** (`domain/service/`): pure stateless logic over domain models. No I/O, no Android.
 
 ### Navigation
 
