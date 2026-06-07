@@ -56,15 +56,15 @@ jobs:
         uses: actions/cache@v4
         id: avd-cache
         with:
-          path: ${{ env.ANDROID_SDK_ROOT }}/system-images/android-34/google-atd/
-          key: gmd-system-image-android-34-google-atd-x86_64-v1
+          path: ${{ env.ANDROID_SDK_ROOT }}/system-images/android-34/google_apis/
+          key: gmd-system-image-android-34-google_apis-x86_64-v1
       - name: Accept Android SDK licenses
         run: yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses || true
       - name: Download system image
         if: steps.avd-cache.outputs.cache-hit != 'true'
         run: |
           "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
-            "system-images;android-34;google-atd;x86_64"
+            "system-images;android-34;google_apis;x86_64"
       - name: Run instrumented tests
         run: ./gradlew pixel6api34DebugAndroidTest
           -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect

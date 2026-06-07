@@ -59,7 +59,7 @@ android {
                 create("pixel6api34") {
                     device = "Pixel 6"
                     apiLevel = 34
-                    systemImageSource = "google-atd"
+                    systemImageSource = "google_apis"
                 }
             }
         }
