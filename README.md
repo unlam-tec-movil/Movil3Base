@@ -7,7 +7,7 @@
   - [Domain](#domain)
   - [Application](#application)
   - [UI](#ui)
-  - [Infrastructure](#infrastructure)
+  - [Data](#data)
   - [Reglas de dependencia](#reglas-de-dependencia)
 - [Navegación](#navegación)
 - [Inyección de Dependencias](#inyección-de-dependencias)
@@ -44,7 +44,7 @@ ar.edu.unlam.mobile.scaffolding/
 ├── application/                # Orquestación y definición de puertos
 │   ├── port/
 │   │   ├── in/                 # Puertos de entrada: interfaces que llama UI
-│   │   └── out/                # Puertos de salida: interfaces que implementa Infrastructure
+│   │   └── out/                # Puertos de salida: interfaces que implementa Data
 │   └── service/                # Interactors: implementan port/in, usan port/out
 │
 ├── ui/                         # Adaptador de entrada — Jetpack Compose, ViewModels
@@ -56,11 +56,11 @@ ar.edu.unlam.mobile.scaffolding/
 │   ├── navigation/             # Definición de rutas y NavHost
 │   └── theme/                  # Material Design 3 (Color, Type, Theme)
 │
-└── infrastructure/             # Adaptador de salida — Room, Retrofit, sensores, cámara
-    ├── db/                     # Room: implementa application.port.out
-    ├── network/                # Retrofit: implementa application.port.out
-    ├── di/                     # Módulos Hilt
-    └── <adapter>/              # Adaptadores de dispositivo (cámara, sensores, ubicación)
+└── data/                       # Adaptador de salida — Room, Retrofit, sensores, cámara
+    ├── datasources/            # Fuentes de datos locales (Room) y remotas (Retrofit)
+    ├── repositories/           # Implementan application/port/out
+    ├── mappers/                # Conversión entity/DTO ↔ domain model
+    └── di/                     # Módulos Hilt
 ```
 
 ---
@@ -88,7 +88,7 @@ class AngleComparisonService @Inject constructor() {
 ### Application
 
 Capa de orquestación. Define **qué** puede hacer el sistema (puertos) y **cómo** se coordina
-(interactors). No tiene dependencias de Android ni de infrastructure.
+(interactors). No tiene dependencias de Android ni de data.
 
 **`port/in/`** — Interfaces de casos de uso que la capa de UI invoca. Cada interfaz
 representa una acción del usuario o del sistema:
@@ -99,7 +99,7 @@ interface LoginUseCase {
 }
 ```
 
-**`port/out/`** — Interfaces de repositorios y fuentes de datos que infrastructure implementa:
+**`port/out/`** — Interfaces de repositorios y fuentes de datos que data implementa:
 
 ```kotlin
 interface UserRepository {
@@ -126,7 +126,7 @@ class LoginInteractor @Inject constructor(
 
 Adaptador de entrada. Contiene toda la UI de Android (Jetpack Compose, ViewModels, Navigation).
 
-- Los **ViewModels** inyectan interfaces de `application/port/in/` — nunca clases de infrastructure.
+- Los **ViewModels** inyectan interfaces de `application/port/in/` — nunca clases de data.
 - Las pantallas son composables **sin estado propio**; el estado viene del ViewModel via `StateFlow`.
 - Los componentes reutilizables viven en `ui/components/`.
 
@@ -157,32 +157,34 @@ NavHost(navController = controller, startDestination = "home") {
 
 ---
 
-### Infrastructure
+### Data
 
 Adaptador de salida. Implementa los puertos definidos en `application/port/out/` usando
 tecnologías concretas (Room, Retrofit, Firebase, sensores Android).
 
-**`db/`** — Implementaciones Room (DAOs, Entities, Database, Mappers).
+**`datasources/local/`** — Implementaciones Room (DAOs, Entities, Database).
 
-**`network/`** — Clientes Retrofit (API interfaces, DTOs, Mappers).
+**`datasources/network/`** — Clientes Retrofit (API interfaces, DTOs).
+
+**`mappers/`** — Conversión entre entity/DTO y domain model en ambas direcciones.
+
+**`repositories/`** — Implementan las interfaces `port/out` de application.
 
 **`di/`** — Módulos Hilt que ligan interfaces (`port/out`) con sus implementaciones.
-
-**`<adapter>/`** — Adaptadores de dispositivo: cámara (CameraX), sensores, ubicación.
 
 ---
 
 ### Reglas de dependencia
 
-| Capa             | Puede importar          | NO puede importar               |
-|------------------|-------------------------|---------------------------------|
-| `domain`         | nada (Kotlin puro)      | application, ui, infrastructure |
-| `application`    | domain únicamente       | ui, infrastructure              |
-| `ui`             | application, domain     | infrastructure                  |
-| `infrastructure` | application, domain     | ui                              |
+| Capa          | Puede importar          | NO puede importar       |
+|---------------|-------------------------|-------------------------|
+| `domain`      | nada (Kotlin puro)      | application, ui, data   |
+| `application` | domain únicamente       | ui, data                |
+| `ui`          | application, domain     | data                    |
+| `data`        | application, domain     | ui                      |
 
 Estas reglas se deben verificar en code review. Una violación típica es inyectar una clase
-concreta de infrastructure (ej. `SessionPreferences`) directamente en un interactor de application.
+concreta de data (ej. `UserRepositoryImpl`) directamente en un interactor de application.
 
 ---
 
@@ -193,7 +195,7 @@ Dagger Hilt en toda la aplicación:
 - `ScaffoldingApplication` → `@HiltAndroidApp`
 - `MainActivity` → `@AndroidEntryPoint`
 - ViewModels → `@HiltViewModel` + `hiltViewModel()` en el composable
-- Los módulos Hilt (en `infrastructure/di/`) ligan cada interfaz `port/out` con su implementación
+- Los módulos Hilt (en `data/di/`) ligan cada interfaz `port/out` con su implementación
 
 ---
 

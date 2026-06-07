@@ -36,7 +36,7 @@ ar.edu.unlam.mobile.scaffolding/
 ├── application/                # Orchestration & port definitions — NO Android, NO frameworks
 │   ├── port/
 │   │   ├── in/                 # Input ports: interfaces that ui calls (use cases)
-│   │   └── out/                # Output ports: interfaces that infrastructure implements (repositories, remote sources)
+│   │   └── out/                # Output ports: interfaces that data implements (repositories, remote sources)
 │   └── service/                # Interactors: implement input ports, call output ports
 │
 ├── ui/                         # Inbound adapter — Jetpack Compose + Android UI
@@ -48,26 +48,26 @@ ar.edu.unlam.mobile.scaffolding/
 │   ├── navigation/             # NavHost and route definitions
 │   └── theme/                  # Material Design 3 (Color, Type, Theme)
 │
-└── infrastructure/             # Outbound adapter — Room, Retrofit, sensors, camera
-    ├── db/                     # Room implementations of application.port.out
-    ├── network/                # Retrofit implementations of application.port.out
-    ├── di/                     # Hilt modules wiring ports to implementations
-    └── <adapter>/              # Device adapters (camera, sensors, location)
+└── data/                       # Outbound adapter — Room, Retrofit, sensors, camera
+    ├── datasources/            # Room DAOs/Entities and Retrofit services
+    ├── repositories/           # Implementations of application.port.out
+    ├── mappers/                # Entity/DTO ↔ domain model converters
+    └── di/                     # Hilt modules wiring ports to implementations
 ```
 
 ### Dependency Rules (strictly enforced)
 
-| Layer            | May import              | Must NOT import                    |
-|------------------|-------------------------|------------------------------------|
-| `domain`         | nothing (pure Kotlin)   | application, ui, infrastructure    |
-| `application`    | domain only             | ui, infrastructure                 |
-| `ui`             | application, domain     | infrastructure                     |
-| `infrastructure` | application, domain     | ui                                 |
+| Layer         | May import              | Must NOT import          |
+|---------------|-------------------------|--------------------------|
+| `domain`      | nothing (pure Kotlin)   | application, ui, data    |
+| `application` | domain only             | ui, data                 |
+| `ui`          | application, domain     | data                     |
+| `data`        | application, domain     | ui                       |
 
 ### Key Concepts
 
 - **Input Port** (`application/port/in/`): interface defining a use case (e.g., `LoginUseCase`). UI calls these.
-- **Output Port** (`application/port/out/`): interface defining a data contract (e.g., `UserRepository`, `LocationSource`). Infrastructure implements these.
+- **Output Port** (`application/port/out/`): interface defining a data contract (e.g., `UserRepository`, `LocationSource`). Data implements these.
 - **Interactor** (`application/service/`): implements an input port, orchestrates domain logic and output ports.
 - **Domain Service** (`domain/service/`): pure stateless logic over domain models. No I/O, no Android.
 
