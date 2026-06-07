@@ -71,6 +71,16 @@ android {
     }
 }
 
+kover {
+    reports {
+        filters {
+            excludes {
+                annotatedBy("androidx.compose.runtime.Composable")
+            }
+        }
+    }
+}
+
 dependencies {
 
     // Base
