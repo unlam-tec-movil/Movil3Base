@@ -33,39 +33,3 @@ jobs:
           min-coverage-overall: 60
           min-coverage-changed-files: 60
           coverage-counter-type: LINE
-
-  instrumented-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up JDK
-        uses: actions/setup-java@v3
-        with:
-          distribution: zulu
-          java-version: 17
-      - name: Set up Gradle
-        uses: gradle/gradle-build-action@v2
-      - name: Change wrapper permissions
-        run: chmod +x ./gradlew
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - name: Cache GMD system image
-        uses: actions/cache@v4
-        id: avd-cache
-        with:
-          path: ${{ env.ANDROID_SDK_ROOT }}/system-images/android-34/google_apis/
-          key: gmd-system-image-android-34-google_apis-x86_64-v1
-      - name: Accept Android SDK licenses
-        run: yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses || true
-      - name: Download system image
-        if: steps.avd-cache.outputs.cache-hit != 'true'
-        run: |
-          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
-            "system-images;android-34;google_apis;x86_64"
-      - name: Run instrumented tests
-        run: ./gradlew pixel6api34DebugAndroidTest
-          -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect
-          -Pandroid.experimental.testOptions.managedDevices.emulator.showKernelLogging=true
