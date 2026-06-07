@@ -2,6 +2,16 @@ name: Test coverage ✅
 
 on:
   pull_request:
+    branches:
+      - main
+      - develop
+      - 'releases/**'
+    paths:
+      - '*/src/**'
+      - gradle/**
+      - '**.gradle'
+      - gradle.properties
+      - gradlew*
 
 jobs:
   unit-tests:
